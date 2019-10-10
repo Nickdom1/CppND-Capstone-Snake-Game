@@ -17,6 +17,9 @@ class Snake {
   void Update();
 
   void GrowBody();
+  void ShrinkBody();
+  int GetGridWidth();
+  int GetGridHeight();
   bool SnakeCell(int x, int y);
 
   Direction direction = Direction::kUp;
@@ -24,6 +27,7 @@ class Snake {
   float speed{0.1f};
   int size{1};
   bool alive{true};
+  bool is_bot{false};
   float head_x;
   float head_y;
   std::vector<SDL_Point> body;
@@ -33,6 +37,7 @@ class Snake {
   void UpdateBody(SDL_Point &current_cell, SDL_Point &prev_cell);
 
   bool growing{false};
+  bool shrinking{false};
   int grid_width;
   int grid_height;
 };

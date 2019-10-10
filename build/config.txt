@@ -1,0 +1,5 @@
+kFramesPerSecond=60
+kScreenWidth=1280
+kScreenHeight=1280
+kGridWidth=32
+kGridHeight=32

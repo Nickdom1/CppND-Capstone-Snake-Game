@@ -1,13 +1,22 @@
 #include "game.h"
 #include <iostream>
 #include "SDL.h"
+#include <algorithm>
 
 Game::Game(std::size_t grid_width, std::size_t grid_height)
     : snake(grid_width, grid_height),
+      initial_width(grid_width),
+      initial_height(grid_height),
       engine(dev()),
       random_w(0, static_cast<int>(grid_width)),
       random_h(0, static_cast<int>(grid_height)) {
   PlaceFood();
+}
+
+void Game::addSnake() {
+  Snake new_snake = Snake(initial_width, initial_height);
+  new_snake.is_bot = true;
+  snakes.push_back(new_snake);
 }
 
 void Game::Run(Controller const &controller, Renderer &renderer,
@@ -17,15 +26,24 @@ void Game::Run(Controller const &controller, Renderer &renderer,
   Uint32 frame_end;
   Uint32 frame_duration;
   int frame_count = 0;
+  int loop_count = 0;
   bool running = true;
 
   while (running) {
+    loop_count++;
+    if(loop_count % (initial_width * 10) == 0) {
+      PlaceFood();
+    }
     frame_start = SDL_GetTicks();
 
     // Input, Update, Render - the main game loop.
-    controller.HandleInput(running, snake);
+    controller.HandleUserInput(running, snake);
+    for(Snake &comSnake : snakes) {
+      controller.HandleComputerInput(comSnake, &food);
+    }
+
     Update();
-    renderer.Render(snake, food);
+    renderer.Render(snake, snakes, food);
 
     frame_end = SDL_GetTicks();
 
@@ -57,18 +75,33 @@ void Game::PlaceFood() {
     y = random_h(engine);
     // Check that the location is not occupied by a snake item before placing
     // food.
-    if (!snake.SnakeCell(x, y)) {
+    if (!snake.SnakeCell(x, y) && !CheckForCompCollision(x, y)) {
       food.x = x;
       food.y = y;
-      return;
+      break;
+    } else {
+      continue;
     }
   }
 }
+
+Snake * Game::CheckForCompCollision(int x, int y) {
+  auto compCollision = std::find_if(snakes.begin(), snakes.end(), [x,y](Snake snek) ->bool { return snek.SnakeCell(x, y); });
+  if(compCollision != snakes.end()) {
+    return &*compCollision;
+  } else {
+    return nullptr;
+  }
+}
+
 
 void Game::Update() {
   if (!snake.alive) return;
 
   snake.Update();
+  for (Snake &comSnake : snakes) {
+    comSnake.Update();
+  }
 
   int new_x = static_cast<int>(snake.head_x);
   int new_y = static_cast<int>(snake.head_y);
@@ -80,6 +113,23 @@ void Game::Update() {
     // Grow snake and increase speed.
     snake.GrowBody();
     snake.speed += 0.02;
+    if(snake.size % 3 == 0) {
+      addSnake();
+    }
+    // Check if computer found food
+  }
+  Snake * compFoundFood = CheckForCompCollision(food.x, food.y);
+  if (compFoundFood) {
+    PlaceFood();
+    compFoundFood->GrowBody();
+    compFoundFood->speed += 0.01;
+  }
+  // Check if player is running into a snake
+  if (CheckForCompCollision(new_x, new_y)) {
+    snake.ShrinkBody();
+    if(snake.speed > 0.1) {
+      snake.speed -= 0.015;
+    }
   }
 }
 
